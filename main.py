@@ -62,6 +62,46 @@ def view_total(cursor):
     print(f"\nTotal spending: ₹{total:.2f}")
 
 
+def edit_expense(cursor, connection):
+    try:
+        expense_id = int(input("Enter the expense ID to edit: "))
+    except ValueError:
+        print("Invalid ID. Please enter a number.")
+        return
+
+    cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
+    expense = cursor.fetchone()
+
+    if not expense:
+        print("Expense ID not found.")
+        return
+
+    print(f"\nEditing: ₹{expense[1]:.2f} | {expense[2]} | {expense[3]} | {expense[4]}")
+
+    try:
+        amount = float(input("Enter new amount: ₹"))
+    except ValueError:
+        print("Invalid amount. Please enter a number.")
+        return
+
+    category = input("Enter new category: ").strip()
+    expense_date = input("Enter new date (YYYY-MM-DD): ").strip()
+    note = input("Enter new note: ").strip()
+
+    if not category or not expense_date:
+        print("Category and date cannot be empty.")
+        return
+
+    cursor.execute("""
+        UPDATE expenses
+        SET amount = ?, category = ?, expense_date = ?, note = ?
+        WHERE id = ?
+    """, (amount, category, expense_date, note, expense_id))
+
+    connection.commit()
+    print("Expense updated successfully!")
+
+
 def delete_expense(cursor, connection):
     try:
         expense_id = int(input("Enter the expense ID to delete: "))
@@ -92,10 +132,11 @@ def main():
         print("1. Add Expense")
         print("2. View All Expenses")
         print("3. View Total Spending")
-        print("4. Delete Expense")
-        print("5. Exit")
+        print("4. Edit Expense")
+        print("5. Delete Expense")
+        print("6. Exit")
 
-        choice = input("Choose an option (1-5): ").strip()
+        choice = input("Choose an option (1-6): ").strip()
 
         if choice == "1":
             add_expense(cursor, connection)
@@ -104,13 +145,15 @@ def main():
         elif choice == "3":
             view_total(cursor)
         elif choice == "4":
-            delete_expense(cursor, connection)
+            edit_expense(cursor, connection)
         elif choice == "5":
+            delete_expense(cursor, connection)
+        elif choice == "6":
             connection.close()
             print("Thank you for using Expense Tracker!")
             break
         else:
-            print("Invalid choice. Please select 1 to 5.")
+            print("Invalid choice. Please select 1 to 6.")
 
 
 if __name__ == "__main__":
