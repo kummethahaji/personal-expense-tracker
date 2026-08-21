@@ -92,5 +92,5 @@ It contains:
 
 ## Author
 
-Shaik Saheb  
+Kummetha Haji Vali  
 GitHub: [kummethahaji](https://github.com/kummethahaji)
