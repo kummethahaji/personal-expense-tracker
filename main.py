@@ -81,6 +81,23 @@ def view_category_summary(cursor):
         print(f"{category}: ₹{total:.2f}")
 
 
+def view_monthly_summary(cursor):
+    month = input("Enter month (YYYY-MM): ").strip()
+
+    if len(month) != 7 or month[4] != "-":
+        print("Invalid format. Please use YYYY-MM.")
+        return
+
+    cursor.execute("""
+        SELECT SUM(amount)
+        FROM expenses
+        WHERE substr(expense_date, 1, 7) = ?
+    """, (month,))
+
+    total = cursor.fetchone()[0] or 0
+    print(f"\nTotal spending for {month}: ₹{total:.2f}")
+
+
 def edit_expense(cursor, connection):
     try:
         expense_id = int(input("Enter the expense ID to edit: "))
@@ -152,11 +169,12 @@ def main():
         print("2. View All Expenses")
         print("3. View Total Spending")
         print("4. Category-Wise Summary")
-        print("5. Edit Expense")
-        print("6. Delete Expense")
-        print("7. Exit")
+        print("5. Monthly Spending Summary")
+        print("6. Edit Expense")
+        print("7. Delete Expense")
+        print("8. Exit")
 
-        choice = input("Choose an option (1-7): ").strip()
+        choice = input("Choose an option (1-8): ").strip()
 
         if choice == "1":
             add_expense(cursor, connection)
@@ -167,15 +185,17 @@ def main():
         elif choice == "4":
             view_category_summary(cursor)
         elif choice == "5":
-            edit_expense(cursor, connection)
+            view_monthly_summary(cursor)
         elif choice == "6":
-            delete_expense(cursor, connection)
+            edit_expense(cursor, connection)
         elif choice == "7":
+            delete_expense(cursor, connection)
+        elif choice == "8":
             connection.close()
             print("Thank you for using Expense Tracker!")
             break
         else:
-            print("Invalid choice. Please select 1 to 7.")
+            print("Invalid choice. Please select 1 to 8.")
 
 
 if __name__ == "__main__":
