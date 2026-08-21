@@ -1,7 +1,7 @@
 import sqlite3
 
 
-def create_table(cursor):
+def create_tables(cursor):
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -9,6 +9,14 @@ def create_table(cursor):
             category TEXT NOT NULL,
             expense_date TEXT NOT NULL,
             note TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            month TEXT UNIQUE NOT NULL,
+            budget_amount REAL NOT NULL
         )
     """)
 
@@ -98,6 +106,74 @@ def view_monthly_summary(cursor):
     print(f"\nTotal spending for {month}: ₹{total:.2f}")
 
 
+def set_monthly_budget(cursor, connection):
+    month = input("Enter month (YYYY-MM): ").strip()
+
+    if len(month) != 7 or month[4] != "-":
+        print("Invalid format. Please use YYYY-MM.")
+        return
+
+    try:
+        budget_amount = float(input("Enter monthly budget amount: ₹"))
+    except ValueError:
+        print("Invalid budget amount. Please enter a number.")
+        return
+
+    if budget_amount <= 0:
+        print("Budget amount must be greater than zero.")
+        return
+
+    cursor.execute("""
+        INSERT INTO budgets (month, budget_amount)
+        VALUES (?, ?)
+        ON CONFLICT(month)
+        DO UPDATE SET budget_amount = excluded.budget_amount
+    """, (month, budget_amount))
+
+    connection.commit()
+    print(f"Budget for {month} saved successfully!")
+
+
+def view_budget_status(cursor):
+    month = input("Enter month (YYYY-MM): ").strip()
+
+    if len(month) != 7 or month[4] != "-":
+        print("Invalid format. Please use YYYY-MM.")
+        return
+
+    cursor.execute(
+        "SELECT budget_amount FROM budgets WHERE month = ?",
+        (month,)
+    )
+    budget = cursor.fetchone()
+
+    if not budget:
+        print(f"No budget has been set for {month}.")
+        return
+
+    budget_amount = budget[0]
+
+    cursor.execute("""
+        SELECT SUM(amount)
+        FROM expenses
+        WHERE substr(expense_date, 1, 7) = ?
+    """, (month,))
+    spent = cursor.fetchone()[0] or 0
+
+    remaining = budget_amount - spent
+
+    print(f"\n--- Budget Status for {month} ---")
+    print(f"Budget: ₹{budget_amount:.2f}")
+    print(f"Spent: ₹{spent:.2f}")
+
+    if remaining >= 0:
+        print(f"Remaining: ₹{remaining:.2f}")
+        print("Status: You are within your budget.")
+    else:
+        print(f"Overspent by: ₹{abs(remaining):.2f}")
+        print("Status: Warning! You have exceeded your budget.")
+
+
 def edit_expense(cursor, connection):
     try:
         expense_id = int(input("Enter the expense ID to edit: "))
@@ -160,7 +236,7 @@ def main():
     connection = sqlite3.connect("expenses.db")
     cursor = connection.cursor()
 
-    create_table(cursor)
+    create_tables(cursor)
     connection.commit()
 
     while True:
@@ -170,11 +246,13 @@ def main():
         print("3. View Total Spending")
         print("4. Category-Wise Summary")
         print("5. Monthly Spending Summary")
-        print("6. Edit Expense")
-        print("7. Delete Expense")
-        print("8. Exit")
+        print("6. Set or Update Monthly Budget")
+        print("7. View Budget Status")
+        print("8. Edit Expense")
+        print("9. Delete Expense")
+        print("10. Exit")
 
-        choice = input("Choose an option (1-8): ").strip()
+        choice = input("Choose an option (1-10): ").strip()
 
         if choice == "1":
             add_expense(cursor, connection)
@@ -187,15 +265,19 @@ def main():
         elif choice == "5":
             view_monthly_summary(cursor)
         elif choice == "6":
-            edit_expense(cursor, connection)
+            set_monthly_budget(cursor, connection)
         elif choice == "7":
-            delete_expense(cursor, connection)
+            view_budget_status(cursor)
         elif choice == "8":
+            edit_expense(cursor, connection)
+        elif choice == "9":
+            delete_expense(cursor, connection)
+        elif choice == "10":
             connection.close()
             print("Thank you for using Expense Tracker!")
             break
         else:
-            print("Invalid choice. Please select 1 to 8.")
+            print("Invalid choice. Please select 1 to 10.")
 
 
 if __name__ == "__main__":
